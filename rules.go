@@ -1,11 +1,6 @@
 package i18n
 
 import (
-	// standard library
-	"io/ioutil"
-	"os"
-
-	// third party
 	"gopkg.in/yaml.v1"
 )
 
@@ -167,28 +162,33 @@ type currency struct {
 }
 
 // load unmarshalls rule data from yaml files into the translator's rules
-func (t *TranslatorRules) load(files []string) (errors []error) {
+func (t *TranslatorRules) load(data []byte, setPlural, setDirection bool) (errors []error) {
 
-	for _, file := range files {
-		_, statErr := os.Stat(file)
-		if statErr == nil {
-			contents, readErr := ioutil.ReadFile(file)
+	tNew := new(TranslatorRules)
+	yamlErr := yaml.Unmarshal(data, tNew)
 
-			if readErr != nil {
-				errors = append(errors, translatorError{message: "can't open rules file: " + readErr.Error()})
-			}
+	if yamlErr != nil {
+		errors = append(errors, translatorError{message: "can't load rules YAML: " + yamlErr.Error()})
+	} else {
+		t.merge(tNew)
+	}
 
-			tNew := new(TranslatorRules)
-			yamlErr := yaml.Unmarshal(contents, tNew)
-
-			if yamlErr != nil {
-				errors = append(errors, translatorError{message: "can't load rules YAML: " + yamlErr.Error()})
-			} else {
-				t.merge(tNew)
-			}
+	if setPlural {
+		if errs := t.setPlural(); errs != nil {
+			errors = append(errors, errs...)
 		}
 	}
 
+	if setDirection {
+		if errs := t.setDirection(); errs != nil {
+			errors = append(errors, errs...)
+		}
+	}
+
+	return
+}
+
+func (t *TranslatorRules) setPlural() (errors []error) {
 	// set the plural rule func
 	pRule, ok := pluralRules[t.Plural]
 	if ok {
@@ -203,6 +203,10 @@ func (t *TranslatorRules) load(files []string) (errors []error) {
 		t.PluralRuleFunc = pluralRules["1"]
 	}
 
+	return
+}
+
+func (t *TranslatorRules) setDirection() (errors []error) {
 	if t.Direction == "" {
 		errors = append(errors, translatorError{message: "missing direction rule"})
 		t.Direction = direction_ltr

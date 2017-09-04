@@ -197,6 +197,10 @@ func (t *Translator) T(key string) string {
 	return t.Tr(key, map[string]string{})
 }
 
+func (t *Translator) Err(key string) error {
+	return fmt.Errorf("%s", t.T(key))
+}
+
 // Translate returns the translated message, performang any substitutions
 // requested in the substitutions map. If neither this translator nor its
 // fallback translator (or the fallback's fallback and so on) have a translation
